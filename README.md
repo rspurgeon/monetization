@@ -43,27 +43,31 @@ Run the Kong gateway exposing various ports for usage on the host machine. This 
 ```
 KONG_LICENSE_DATA=$(cat $KONG_LICENSE_FILE) docker run -d --name kong-gateway \
 	--network=kong-net -e "KONG_DATABASE=postgres" -e "KONG_PG_HOST=kong-database" \
-	-e "KONG_PG_USER=kong" -e "KONG_PG_PASSWORD=kong" -e "KONG_PROXY_ACCESS_LOG=/dev/stdout" \
-	-e "KONG_ADMIN_ACCESS_LOG=/dev/stdout" -e "KONG_PROXY_ERROR_LOG=/dev/stderr" \
-	-e "KONG_ADMIN_ERROR_LOG=/dev/stderr" -e "KONG_ADMIN_LISTEN=0.0.0.0:8001" \
-	-e "KONG_ADMIN_GUI_URL=http://localhost:8002" -e KONG_LICENSE_DATA -p 8000:8000 \
-	-e KONG_LICENSE_DATA -p 8443:8443 -p 8001:8001 -p 8444:8444 -p 8002:8002 -p 8445:8445 \
-	-p 8003:8003 -p 8004:8004 kong/kong-gateway:2.8.1.1-alpine
+	-e "KONG_PG_USER=kong" -e "KONG_PG_PASSWORD=kong"  \
+	-e "KONG_PROXY_ACCESS_LOG=/dev/stdout" -e "KONG_ADMIN_ACCESS_LOG=/dev/stdout" \
+	-e "KONG_PROXY_ERROR_LOG=/dev/stderr" -e "KONG_ADMIN_ERROR_LOG=/dev/stderr" \
+	-e "KONG_ADMIN_LISTEN=0.0.0.0:8001" -e "KONG_ADMIN_GUI_URL=http://localhost:8002" \
+	-e KONG_LICENSE_DATA -p 8000:8000 -e KONG_LICENSE_DATA -p 8443:8443 -p 8001:8001 \
+	-p 8444:8444 -p 8002:8002 -p 8445:8445 -p 8003:8003 -p 8004:8004 \
+	kong/kong-gateway:2.8.1.1-alpine
 ```
 
 Copy the billable plugin code files into the running container.
 ```
-docker cp kong-plugin-billable/kong/plugins/billable kong-gateway:/usr/local/share/lua/5.1/kong/plugins/
+docker cp kong-plugin-billable/kong/plugins/billable \
+	kong-gateway:/usr/local/share/lua/5.1/kong/plugins/
 ```
 
 The billable plugin has persistence which requires database setup. This command instructs Kong to run migrations including those defined in the billable plugin `migrations` source folder.
 ```
-docker exec --user kong -e KONG_PLUGINS="bundled,billable" kong-gateway kong migrations up -vv
+docker exec --user kong -e KONG_PLUGINS="bundled,billable" \
+	kong-gateway kong migrations up -vv
 ```
 
 Reload the gateway instructing it to load the custom billable plugin along with all it's bundled plugins.
 ```
-docker exec --user kong -e KONG_PLUGINS="bundled,billable" kong-gateway kong reload -vv
+docker exec --user kong -e KONG_PLUGINS="bundled,billable" \
+	kong-gateway kong reload -vv
 ```
 
 Enable the billable plugin on the running gateway.
@@ -86,7 +90,8 @@ curl -i -X POST --url http://localhost:8001/services/mock/routes --data 'paths[]
 
 Secure the new route with the [Key Authentication](https://docs.konghq.com/hub/kong-inc/key-auth/) plugin.
 ```
-curl -X POST http://localhost:8001/routes/mock/plugins --data "name=key-auth"
+curl -X POST http://localhost:8001/routes/mock/plugins \
+	--data "name=key-auth"
 ```
 
 The billable plugin requires consumers to aggregate API usage. Create few different consumers that you can use to generate sample traffic for.
@@ -114,5 +119,6 @@ curl http://localhost:8001/billable | jq
 
 Generate a report.
 ```
-curl -s "http://localhost:8001/billable?period=month&csv=true" > mock-billing-data-$(date +"%m_%d_%Y").csv
+curl -s "http://localhost:8001/billable?period=month&csv=true" \
+	> mock-billing-data-$(date +"%m_%d_%Y").csv
 ```
